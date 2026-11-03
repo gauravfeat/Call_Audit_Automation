@@ -1,0 +1,122 @@
+{
+  "version": "1.0.0",
+  "client": "HDFC Securities",
+  "description": "Baseline KPI compliance policies and condition specifications for automated call audits.",
+  "kpis": [
+    {
+      "id": "KPI-01",
+      "category": "RM Conduct & Professionalism",
+      "severity": "CRITICAL",
+      "description": "RM must maintain professional, courteous language and must not use aggressive, disrespectful, or unprofessional speech.",
+      "speaker_target": "RM",
+      "false_positive_risk": "High if customer anger or vulgarity is misattributed to RM.",
+      "conditions": {
+        "violation_triggers": ["aggressive tone", "unprofessional language", "vulgarity by RM"],
+        "exclusions": ["customer expressing frustration while RM remains professional"]
+      }
+    },
+    {
+      "id": "KPI-02",
+      "category": "Unauthorized Trading Advice",
+      "severity": "CRITICAL",
+      "description": "RM must not provide direct, unauthorized buy/sell trading advice or stock tips outside official research recommendations.",
+      "speaker_target": "RM",
+      "false_positive_risk": "Customer asking for tips or discussing stocks must not be flagged as RM misconduct unless RM explicitly provides unauthorized guidance.",
+      "conditions": {
+        "violation_triggers": ["unauthorized trade prompt", "guaranteed stock tip", "pressure to trade"],
+        "exclusions": ["citing official HDFC Securities research reports with standard disclaimers"]
+      }
+    },
+    {
+      "id": "KPI-03",
+      "category": "Guaranteed Return Promises",
+      "severity": "CRITICAL",
+      "description": "RM must never promise or imply guaranteed profits, returns, or capital protection on market-linked securities.",
+      "speaker_target": "RM",
+      "false_positive_risk": "Customer demanding guarantees or asking 'is this return guaranteed?' must not be attributed as RM violation.",
+      "conditions": {
+        "violation_triggers": ["guaranteed return promise", "zero loss claim", "assured yield statement"],
+        "exclusions": ["explaining fixed income products with statutory deposit insurance"]
+      }
+    },
+    {
+      "id": "KPI-04",
+      "category": "Risk Disclosure & Disclaimers",
+      "severity": "HIGH",
+      "description": "RM must communicate mandatory statutory risk warnings when discussing derivatives, equity investments, or leveraged products.",
+      "speaker_target": "RM",
+      "false_positive_risk": "Medium if disclaimer was delivered in customer-selected regional language or shortened standard closing.",
+      "conditions": {
+        "mandatory_disclosure_required": true,
+        "keywords": ["market risk", "derivative trading risk", "capital subject to market movements"]
+      }
+    },
+    {
+      "id": "KPI-05",
+      "category": "Customer Verification & Greeting",
+      "severity": "MEDIUM",
+      "description": "RM must identify themselves by name and branch, and perform mandatory client authentication before discussing account specifics.",
+      "speaker_target": "RM",
+      "false_positive_risk": "Low to medium if authentication was conducted via SMS OTP or IVR prior to call transfer.",
+      "conditions": {
+        "verification_steps": ["RM identification", "client name confirmation", "registered credential check"]
+      }
+    },
+    {
+      "id": "KPI-06",
+      "category": "Margin & Collateral Terms",
+      "severity": "HIGH",
+      "description": "RM must clearly articulate margin requirements, squared-off conditions, and interest levies on funded positions.",
+      "speaker_target": "RM",
+      "false_positive_risk": "High if client confusion regarding margin calls is misread as RM non-disclosure.",
+      "conditions": {
+        "violation_triggers": ["misleading margin call info", "failure to disclose margin shortfall liquidation timeline"]
+      }
+    },
+    {
+      "id": "KPI-07",
+      "category": "Information Privacy & Confidentiality",
+      "severity": "CRITICAL",
+      "description": "RM must never solicit, store, or share client passwords, PINs, OTPs, or CVVs.",
+      "speaker_target": "RM",
+      "false_positive_risk": "High if client offers OTP unprompted and RM actively stops the customer from revealing it.",
+      "conditions": {
+        "violation_triggers": ["asking for trading password", "asking for OTP", "asking for net banking PIN"],
+        "exclusions": ["RM warning customer never to share OTP/password"]
+      }
+    },
+    {
+      "id": "KPI-08",
+      "category": "Product Suitability",
+      "severity": "HIGH",
+      "description": "RM must only suggest investment products matching the customer's stated risk profile and investment horizon.",
+      "speaker_target": "RM",
+      "false_positive_risk": "Medium if client unsolicitedly requests speculative options trading.",
+      "conditions": {
+        "violation_triggers": ["pitching high risk F&O to conservative risk profile client"]
+      }
+    },
+    {
+      "id": "KPI-09",
+      "category": "Grievance Redressal & Complaint Handling",
+      "severity": "HIGH",
+      "description": "RM must acknowledge customer dissatisfaction, log a grievance reference, and explain escalation channels.",
+      "speaker_target": "RM",
+      "false_positive_risk": "Customer complaints should trigger grievance SLA, not disciplinary misconduct against RM if handled correctly.",
+      "conditions": {
+        "escalation_path_provided": true
+      }
+    },
+    {
+      "id": "KPI-10",
+      "category": "Order Confirmation & Call Wrap-Up",
+      "severity": "MEDIUM",
+      "description": "RM must summarize discussion points, recite order parameters accurately, and conclude with standard closing protocol.",
+      "speaker_target": "RM",
+      "false_positive_risk": "Low if call gets disconnected abruptly by customer.",
+      "conditions": {
+        "mandatory_closing_protocol": true
+      }
+    }
+  ]
+}

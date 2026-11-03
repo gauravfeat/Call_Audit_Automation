@@ -1,0 +1,139 @@
+# ==============================================================================
+# Git Ignore - Call Audit Automation System
+# Financial Services Compliance & Confidentiality Safeguards
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Secrets & Environment Configurations
+# ------------------------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# Allow environment example template
+!.env.example
+
+# ------------------------------------------------------------------------------
+# Client Audio & Input Files (Confidential Financial Conversations)
+# ------------------------------------------------------------------------------
+*.mp3
+*.wav
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.wma
+
+# Input directories content
+input/recordings/*
+!input/recordings/.gitkeep
+
+# ------------------------------------------------------------------------------
+# Client Audit Spreadsheets & Observation Data
+# ------------------------------------------------------------------------------
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+
+# Input excel directory content
+input/excel/*
+!input/excel/.gitkeep
+
+# ------------------------------------------------------------------------------
+# Generated Audit Outputs & Reports
+# ------------------------------------------------------------------------------
+output/processed_audio/*
+!output/processed_audio/.gitkeep
+output/audio_reports/*
+!output/audio_reports/.gitkeep
+output/transcripts/*
+!output/transcripts/.gitkeep
+output/validation_results/*
+!output/validation_results/.gitkeep
+output/reports/*
+!output/reports/.gitkeep
+*.pdf
+*.docx
+
+# Local helper binaries
+bin/
+
+# ------------------------------------------------------------------------------
+# Logs & Runtime Diagnostics
+# ------------------------------------------------------------------------------
+logs/*
+!logs/.gitkeep
+*.log
+*.log.*
+
+# ------------------------------------------------------------------------------
+# Python & Bytecode
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ------------------------------------------------------------------------------
+# Virtual Environments
+# ------------------------------------------------------------------------------
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# ------------------------------------------------------------------------------
+# ML Model Checkpoints & Weights Cache
+# ------------------------------------------------------------------------------
+models/
+.cache/
+torch/
+huggingface/
+faster_whisper/
+
+# ------------------------------------------------------------------------------
+# Testing & Code Quality
+# ------------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------------------------
+# Operating System & IDE Files
+# ------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Generated speech-to-text benchmark artifacts
+output/stt_benchmark/
+output/diarized_transcripts/

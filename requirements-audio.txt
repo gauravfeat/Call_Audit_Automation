@@ -1,0 +1,45 @@
+# ==============================================================================
+# Call Audit Automation - Audio & Machine Learning Dependencies
+# ==============================================================================
+#
+# IMPORTANT INSTALLATION NOTES:
+# 1. System Dependency - FFmpeg:
+#    FFmpeg must be installed on your system and accessible in your PATH.
+#    Windows installation:
+#      winget install "Gyan.FFmpeg"
+#      or download from: https://www.gyan.dev/ffmpeg/builds/
+#    Verify: ffmpeg -version
+#
+# 2. PyTorch Platform Compatibility:
+#    pyannote.audio and faster-whisper require PyTorch.
+#    Install the appropriate PyTorch build BEFORE installing these dependencies:
+#
+#    - For CPU only:
+#      pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+#
+#    - For NVIDIA GPU (CUDA 12.1):
+#      pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+#
+# 3. Hugging Face Access Token:
+#    pyannote.audio 3.x requires accepting the user conditions for:
+#    - https://huggingface.co/pyannote/speaker-diarization-3.1
+#    - https://huggingface.co/pyannote/segmentation-3.0
+#    And setting HUGGINGFACE_TOKEN in your .env file.
+# ==============================================================================
+
+# Speech-to-Text (CTranslate2 optimized Whisper)
+faster-whisper>=1.0.0,<2.0.0
+
+# Sarvam AI Official Python SDK (Saaras v4 Speech-to-Text)
+sarvamai>=0.1.42
+
+# ASR Evaluation & Error Metrics (WER / CER)
+jiwer>=3.0.0
+
+# Speaker Diarization
+pyannote.audio>=3.1.0,<4.0.0
+
+# Audio I/O & Preprocessing
+soundfile>=0.12.1,<1.0.0
+librosa>=0.10.1,<1.0.0
+scipy>=1.12.0,<2.0.0
