@@ -1,4 +1,4 @@
-"""
+﻿"""
 Speaker diarization and RM vs customer role separation module.
 
 M4: Identifies distinct speakers in mono call recordings using
@@ -26,6 +26,11 @@ from app.diarization.role_mapper import (
     VALID_ROLES,
 )
 from app.diarization.role_enricher import RoleEnricher
+from app.diarization.role_classifier import (
+    RoleClassifier,
+    RoleClassificationResult,
+    SpeakerEvidence,
+)
 
 __all__ = [
     "DiarizedSegment",
@@ -42,4 +47,7 @@ __all__ = [
     "SpeakerRoleRegistry",
     "VALID_ROLES",
     "RoleEnricher",
+    "RoleClassifier",
+    "RoleClassificationResult",
+    "SpeakerEvidence",
 ]

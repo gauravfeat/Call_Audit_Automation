@@ -1,4 +1,4 @@
-"""
+﻿"""
 Application Configuration Module.
 
 Loads environment variables using Pydantic Settings and defines project paths
@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     # API credentials (optional for initial setup; required for AI pipeline stages)
     GEMINI_API_KEY: Optional[str] = Field(default=None, description="Google Gemini API key")
+    GEMINI_MODEL: str = Field(default="gemini-2.5-flash", description="Google Gemini model identifier")
+    ROLE_CLASSIFICATION_CONFIDENCE_THRESHOLD: float = Field(
+        default=0.85, description="Confidence threshold for automatic role classification"
+    )
     HUGGINGFACE_TOKEN: Optional[str] = Field(default=None, description="Hugging Face User Access Token")
 
     # Optional explicit FFmpeg/FFprobe binary paths (auto-detected if None)
@@ -122,6 +126,11 @@ class Settings(BaseSettings):
         return self.diarized_transcripts_dir / "role_enriched"
 
     @property
+    def ai_role_classifications_dir(self) -> Path:
+        """Directory for AI-predicted role classification outputs."""
+        return self.diarized_transcripts_dir / "ai_role_classifications"
+
+    @property
     def validation_results_dir(self) -> Path:
         """Directory for KPI validation results and false-positive flags."""
         return self.output_dir / "validation_results"
@@ -165,6 +174,7 @@ class Settings(BaseSettings):
             self.stt_benchmark_dir,
             self.diarized_transcripts_dir,
             self.role_enriched_transcripts_dir,
+            self.ai_role_classifications_dir,
             self.validation_results_dir,
             self.reports_dir,
             self.config_dir,
@@ -188,3 +198,8 @@ def get_settings() -> Settings:
     settings = Settings()
     settings.ensure_directories()
     return settings
+
+# Convenient global settings instance
+settings: Settings = get_settings()
+
+__all__ = ["Settings", "get_settings", "settings"]
