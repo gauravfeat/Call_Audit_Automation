@@ -132,6 +132,7 @@ def align_transcript_and_diarization(
     min_overlap_ratio: float = 0.25,
     processing_time_seconds: float = 0.0,
     model_name: str = "pyannote/speaker-diarization-community-1",
+    num_speakers_requested: Optional[int] = None,
     settings: Optional[Settings] = None,
 ) -> DiarizedTranscript:
     """
@@ -144,6 +145,7 @@ def align_transcript_and_diarization(
         min_overlap_ratio: Minimum ratio of segment duration that must overlap with a speaker.
         processing_time_seconds: Total diarization + alignment time.
         model_name: Identifier of diarization model.
+        num_speakers_requested: Expected/requested number of speakers (e.g. 2).
         settings: Application settings.
 
     Returns:
@@ -171,12 +173,17 @@ def align_transcript_and_diarization(
 
     # Case 2: No speaker turns detected by pyannote
     if not speaker_turns:
-        logger.warning("No speaker turns provided for %s. Attributing all segments to SPEAKER_00.", rec_id)
-        warnings.append("No speaker turns detected. Defaulted to SPEAKER_00.")
+        logger.warning(
+            "No speaker turns provided for %s. Diarization failed or audio contains no detected speech turns.",
+            rec_id,
+        )
+        warnings.append(
+            "No speaker turns detected. Segments marked as UNKNOWN and status set to DIARIZATION_FAILED for manual review."
+        )
         aligned_segs = [
             DiarizedSegment(
                 segment_id=idx,
-                speaker_id="SPEAKER_00",
+                speaker_id="UNKNOWN",
                 speaker_role="UNKNOWN",
                 start=seg.start,
                 end=seg.end,
@@ -189,8 +196,8 @@ def align_transcript_and_diarization(
             recording_id=rec_id,
             source_file=transcript.source_file,
             duration=duration,
-            num_speakers_detected=1,
-            num_speakers_requested=None,
+            num_speakers_detected=0,
+            num_speakers_requested=num_speakers_requested,
             model=model_name,
             mode=transcript.transcription_mode or "codemix",
             processing_time_seconds=processing_time_seconds,
@@ -200,7 +207,7 @@ def align_transcript_and_diarization(
             speaker_stats=stats,
             full_transcript=transcript.full_text,
             provider="pyannote",
-            status="SUCCESS",
+            status="DIARIZATION_FAILED",
             warnings=warnings,
         )
 
@@ -267,7 +274,7 @@ def align_transcript_and_diarization(
         source_file=transcript.source_file,
         duration=duration,
         num_speakers_detected=detected_count,
-        num_speakers_requested=None,
+        num_speakers_requested=num_speakers_requested,
         model=model_name,
         mode=transcript.transcription_mode or "codemix",
         processing_time_seconds=processing_time_seconds,

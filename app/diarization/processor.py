@@ -130,6 +130,7 @@ class DiarizationProcessor:
                 speaker_turns=turns,
                 recording_id=rec_id,
                 processing_time_seconds=proc_time,
+                num_speakers_requested=self.num_speakers,
                 settings=self.settings,
             )
 

@@ -434,3 +434,95 @@ class TestIntegrationAndCompatibility:
         assert result.status == "AUTO_CLASSIFIED"
         assert result.speakers[0].predicted_role == "RM"
         assert result.speakers[1].predicted_role == "CUSTOMER"
+
+    def test_pyannote_diarize_output_namedtuple(self, mock_settings: Settings):
+        """19. Verify pyannote 4.x DiarizeOutput unpacking."""
+        class MockTurn:
+            def __init__(self, start, end):
+                self.start = start
+                self.end = end
+
+        class MockAnnotation:
+            def itertracks(self, yield_label=True):
+                return [
+                    (MockTurn(1.0, 4.0), None, "SPEAKER_00"),
+                    (MockTurn(4.5, 9.0), None, "SPEAKER_01"),
+                ]
+
+        class MockDiarizeOutput:
+            def __init__(self, annotation):
+                self.speaker_diarization = annotation
+                self.exclusive_speaker_diarization = None
+                self.speaker_embeddings = None
+
+        output = MockDiarizeOutput(MockAnnotation())
+        diarizer = PyannoteDiarizer(settings=mock_settings)
+        turns = diarizer._parse_diarization_output(output)
+
+        assert len(turns) == 2
+        assert turns[0].speaker_id == "SPEAKER_00"
+        assert turns[1].speaker_id == "SPEAKER_01"
+        assert turns[0].start == 1.0
+        assert turns[1].end == 9.0
+
+    def test_alignment_engine_diarization_failed_on_empty_turns(self, mock_settings: Settings):
+        """20. Verify that empty speaker turns return DIARIZATION_FAILED without fabricating SPEAKER_00."""
+        transcript = Transcript(
+            recording_id="FAIL_CALL_001",
+            source_file="FAIL_CALL_001.wav",
+            language="hi",
+            duration=30.0,
+            model="whisper",
+            processing_time_seconds=1.5,
+            segments=[
+                TranscriptSegment(segment_id=0, start=0.0, end=10.0, text="Unidentified speech"),
+            ],
+            full_text="Unidentified speech",
+        )
+
+        diarized = align_transcript_and_diarization(
+            transcript=transcript,
+            speaker_turns=[],
+            recording_id="FAIL_CALL_001",
+            num_speakers_requested=2,
+            settings=mock_settings,
+        )
+
+        assert diarized.status == "DIARIZATION_FAILED"
+        assert diarized.num_speakers_detected == 0
+        assert diarized.num_speakers_requested == 2
+        assert diarized.segments[0].speaker_id == "UNKNOWN"
+        assert any("DIARIZATION_FAILED" in w for w in diarized.warnings)
+
+    def test_num_speakers_requested_propagation(self, mock_settings: Settings):
+        """21. Verify num_speakers_requested is preserved in canonical DiarizedTranscript output."""
+        transcript = Transcript(
+            recording_id="NORM_CALL_001",
+            source_file="NORM_CALL_001.wav",
+            language="hi",
+            duration=20.0,
+            model="whisper",
+            processing_time_seconds=1.0,
+            segments=[
+                TranscriptSegment(segment_id=0, start=0.0, end=10.0, text="First utterance"),
+                TranscriptSegment(segment_id=1, start=10.0, end=20.0, text="Second utterance"),
+            ],
+            full_text="First utterance Second utterance",
+        )
+
+        turns = [
+            SpeakerTurn(speaker_id="SPEAKER_00", start=0.0, end=10.0),
+            SpeakerTurn(speaker_id="SPEAKER_01", start=10.0, end=20.0),
+        ]
+
+        diarized = align_transcript_and_diarization(
+            transcript=transcript,
+            speaker_turns=turns,
+            recording_id="NORM_CALL_001",
+            num_speakers_requested=2,
+            settings=mock_settings,
+        )
+
+        assert diarized.status == "SUCCESS"
+        assert diarized.num_speakers_requested == 2
+        assert diarized.num_speakers_detected == 2

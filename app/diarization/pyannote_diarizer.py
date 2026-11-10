@@ -223,9 +223,41 @@ class PyannoteDiarizer:
             if max_speakers is not None:
                 kwargs["max_speakers"] = max_speakers
 
+        # Prepare audio input: load via soundfile to avoid torchcodec C++ dependency on Windows
+        try:
+            import soundfile as sf
+            import torch
+
+            data, sr = sf.read(str(path), dtype="float32")
+            if data.ndim == 1:
+                waveform = torch.from_numpy(data).unsqueeze(0)
+            elif data.ndim == 2:
+                waveform = torch.from_numpy(data.T)
+            else:
+                raise ValueError(f"Unsupported audio tensor dimensions: {data.ndim}")
+
+            audio_input: Union[str, Dict[str, Any]] = {
+                "waveform": waveform,
+                "sample_rate": int(sr),
+            }
+        except Exception as load_err:
+            logger.warning(
+                "Could not load audio via soundfile for %s (%s). Falling back to file path.",
+                rec_id,
+                load_err,
+            )
+            audio_input = str(path)
+
         try:
             # Run inference
-            diarization_output = pipeline(str(path), **kwargs)
+            diarization_output = pipeline(audio_input, **kwargs)
+        except TypeError as type_err:
+            # If a mocked pipeline in tests expects string path rather than dict
+            if isinstance(audio_input, dict):
+                logger.debug("Pipeline rejected waveform dict (%s); retrying with path string.", type_err)
+                diarization_output = pipeline(str(path), **kwargs)
+            else:
+                raise
         except Exception as e:
             msg = f"pyannote diarization inference failed for {rec_id}: {e}"
             logger.error(msg)
@@ -246,9 +278,17 @@ class PyannoteDiarizer:
         """Parse pyannote Annotation / tracks into standard SpeakerTurn objects."""
         turns: List[SpeakerTurn] = []
 
-        # Pyannote Annotation iter_tracks API
+        # Extract Annotation: direct Annotation (pyannote 3.x / mocks) or DiarizeOutput (pyannote 4.x)
         if hasattr(diarization_output, "itertracks"):
-            for turn, track, speaker in diarization_output.itertracks(yield_label=True):
+            annotation = diarization_output
+        elif hasattr(diarization_output, "speaker_diarization"):
+            annotation = diarization_output.speaker_diarization
+        else:
+            annotation = diarization_output
+
+        # Pyannote Annotation iter_tracks API
+        if hasattr(annotation, "itertracks"):
+            for turn, track, speaker in annotation.itertracks(yield_label=True):
                 turns.append(
                     SpeakerTurn(
                         speaker_id=_normalize_speaker_id(str(speaker)),
