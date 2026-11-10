@@ -45,6 +45,38 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Custom directory for processed 16kHz WAV files (default: output/processed_audio)",
     )
+    parser.add_argument(
+        "--recording",
+        type=str,
+        default=None,
+        help="Specific recording ID or filename to process (e.g. 'MOCK_CALL_002').",
+    )
+    parser.add_argument(
+        "--stt",
+        action="store_true",
+        default=False,
+        help="Automatically run Speech-to-Text transcription after audio preprocessing.",
+    )
+    parser.add_argument(
+        "--diarization",
+        action="store_true",
+        default=False,
+        help="Automatically run Speaker Diarization after audio preprocessing.",
+    )
+    parser.add_argument(
+        "--stt-provider",
+        type=str,
+        default="whisper_api",
+        choices=["whisper_api", "sarvam", "whisper"],
+        help="Speech-to-Text provider if --stt is enabled (default: 'whisper_api').",
+    )
+    parser.add_argument(
+        "--diarization-provider",
+        type=str,
+        default="pyannote",
+        choices=["pyannote", "sarvam"],
+        help="Diarization provider if --diarization is enabled (default: 'pyannote').",
+    )
     return parser.parse_args()
 
 
@@ -118,14 +150,71 @@ def main() -> int:
 
     # Step 3: Run pipeline
     print(f"\n[3/3] Processing recordings and standardizing to 16kHz mono WAV...")
+    if args.recording:
+        target_stem = Path(args.recording).stem
+        discovered = [f for f in discovered if f.stem == target_stem]
+        if not discovered:
+            print(f"[ERROR] Specified recording '{args.recording}' not found in {input_path}.", file=sys.stderr)
+            return 1
+
     try:
-        summary = processor.process_all(input_dir=input_path, output_dir=output_path)
+        if args.recording:
+            report = processor.process_recording(discovered[0], output_dir=output_path)
+            from datetime import datetime, timezone
+            from app.audio.processor import AudioPipelineSummary
+            summary = AudioPipelineSummary(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                total_recordings_discovered=1,
+                successfully_processed=1 if report.processing_status in ("SUCCESS", "WARNING") else 0,
+                failed_recordings=1 if report.processing_status == "FAILED" else 0,
+                recordings_with_warnings=1 if report.processing_status == "WARNING" else 0,
+                output_directory=str(output_path),
+                report_path_json=str(settings.audio_reports_dir / "audio_quality_report.json"),
+                report_path_csv=str(settings.audio_reports_dir / "audio_quality_summary.csv"),
+                reports=[report],
+            )
+        else:
+            summary = processor.process_all(input_dir=input_path, output_dir=output_path)
     except AudioProcessingError as exc:
         print(f"\n[FATAL ERROR] Audio pipeline failed: {exc}", file=sys.stderr)
         return 1
 
     # Step 4: Display executive summary
     print_summary(summary)
+
+    # Optional Step 5: Automatic STT Transcription
+    if args.stt and summary.successfully_processed > 0:
+        print("\n" + "=" * 80)
+        print(f"  AUTOMATIC STT TRANSCRIPTION (provider='{args.stt_provider}')")
+        print("=" * 80)
+        from app.transcription.transcriber import AudioTranscriber
+        stt_transcriber = AudioTranscriber(provider=args.stt_provider, settings=settings)
+        for r in summary.reports:
+            if r.processing_status in ("SUCCESS", "WARNING") and r.processed_filename:
+                target_file = output_path / r.processed_filename
+                try:
+                    print(f"  Transcribing {r.processed_filename}...")
+                    t = stt_transcriber.transcribe_file(target_file)
+                    print(f"  [SUCCESS] {t.recording_id}: {len(t.segments)} segments, duration {t.duration:.1f}s")
+                except Exception as exc:
+                    print(f"  [ERROR] STT failed for {r.original_filename}: {exc}", file=sys.stderr)
+
+    # Optional Step 6: Automatic Diarization
+    if args.diarization and summary.successfully_processed > 0:
+        print("\n" + "=" * 80)
+        print(f"  AUTOMATIC SPEAKER DIARIZATION (provider='{args.diarization_provider}')")
+        print("=" * 80)
+        from app.diarization.processor import DiarizationProcessor
+        diar_processor = DiarizationProcessor(provider=args.diarization_provider, settings=settings)
+        for r in summary.reports:
+            if r.processing_status in ("SUCCESS", "WARNING") and r.processed_filename:
+                target_file = output_path / r.processed_filename
+                try:
+                    print(f"  Diarizing {r.processed_filename}...")
+                    d = diar_processor.process_recording(target_file)
+                    print(f"  [SUCCESS] {d.recording_id}: {d.num_speakers_detected} speakers, {len(d.segments)} segments")
+                except Exception as exc:
+                    print(f"  [ERROR] Diarization failed for {r.original_filename}: {exc}", file=sys.stderr)
 
     if summary.failed_recordings > 0:
         return 1

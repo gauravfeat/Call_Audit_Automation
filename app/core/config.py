@@ -49,10 +49,25 @@ class Settings(BaseSettings):
     WHISPER_WORD_TIMESTAMPS: bool = Field(default=True, description="Extract word-level timestamps")
 
     # Sarvam AI Saaras v4 Speech-to-Text configuration (Primary STT Provider)
-    DEFAULT_STT_PROVIDER: str = Field(default="sarvam", description="Default STT provider: sarvam or whisper")
+    DEFAULT_STT_PROVIDER: str = Field(default="sarvam", description="Default STT provider: sarvam, whisper, or whisper_api")
     SARVAM_API_KEY: Optional[str] = Field(default=None, description="Sarvam AI API subscription key")
     SARVAM_MODEL: str = Field(default="saaras:v4", description="Sarvam model (saaras:v4)")
     SARVAM_MODE: str = Field(default="codemix", description="Sarvam mode: codemix or verbatim")
+
+    # Remote Whisper Large-v3 API configuration
+    STT_PROVIDER: str = Field(default="sarvam", description="STT Provider: sarvam, whisper, or whisper_api")
+    WHISPER_API_BASE_URL: str = Field(default="http://122.170.2.205:7091", description="Remote Whisper API base URL")
+    WHISPER_MODEL: str = Field(default="openai/whisper-large-v3", description="Whisper model identifier")
+    WHISPER_TIMEOUT: int = Field(default=600, description="Remote Whisper API request timeout in seconds")
+    WHISPER_RESPONSE_FORMAT: str = Field(default="verbose_json", description="Whisper API response format: json or verbose_json")
+    WHISPER_TEMPERATURE: float = Field(default=0.0, description="Sampling temperature for Whisper decoding")
+
+    # pyannote Speaker Diarization configuration
+    PYANNOTE_MODEL: str = Field(
+        default="pyannote/speaker-diarization-community-1",
+        description="pyannote speaker diarization model repository or local directory",
+    )
+    PYANNOTE_DEVICE: str = Field(default="cpu", description="Inference device for pyannote: cpu or cuda")
 
     # Faster-Whisper Large-v3 configuration
     WHISPER_LARGE_MODEL: str = Field(default="large-v3", description="Whisper Large model identifier")
@@ -111,6 +126,11 @@ class Settings(BaseSettings):
         return self.transcripts_dir / "sarvam_v4_codemix"
 
     @property
+    def onprem_whisper_transcripts_dir(self) -> Path:
+        """Directory for remote/on-premises Whisper STT transcripts."""
+        return self.transcripts_dir / "onprem_whisper"
+
+    @property
     def stt_benchmark_dir(self) -> Path:
         """Directory for multi-model STT benchmarking outputs."""
         return self.output_dir / "stt_benchmark"
@@ -119,6 +139,11 @@ class Settings(BaseSettings):
     def diarized_transcripts_dir(self) -> Path:
         """Directory for speaker-diarized transcript outputs."""
         return self.output_dir / "diarized_transcripts"
+
+    @property
+    def onprem_pyannote_diarized_dir(self) -> Path:
+        """Directory for on-premises pyannote diarized transcripts."""
+        return self.diarized_transcripts_dir / "onprem_pyannote"
 
     @property
     def role_enriched_transcripts_dir(self) -> Path:
@@ -171,8 +196,10 @@ class Settings(BaseSettings):
             self.audio_reports_dir,
             self.transcripts_dir,
             self.primary_transcripts_dir,
+            self.onprem_whisper_transcripts_dir,
             self.stt_benchmark_dir,
             self.diarized_transcripts_dir,
+            self.onprem_pyannote_diarized_dir,
             self.role_enriched_transcripts_dir,
             self.ai_role_classifications_dir,
             self.validation_results_dir,

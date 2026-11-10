@@ -35,8 +35,21 @@ from app.diarization.processor import DiarizationProcessor
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="M4: Speaker Diarization using Sarvam Saaras v4 Batch API",
+        description="M4: Speaker Diarization (Sarvam Saaras v4 or local pyannote Community-1)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default="sarvam",
+        choices=["sarvam", "pyannote"],
+        help="Diarization engine to use: 'sarvam' (cloud API) or 'pyannote' (local Community-1). Default is 'sarvam'.",
+    )
+    parser.add_argument(
+        "--recording",
+        type=str,
+        default=None,
+        help="Specific recording ID to diarize (e.g. 'MOCK_CALL_002'). If omitted, processes all recordings.",
     )
     parser.add_argument(
         "--input-dir",
@@ -72,11 +85,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def print_banner(mode: str, num_speakers: int) -> None:
+def print_banner(mode: str, num_speakers: int, provider: str = "sarvam") -> None:
     print("=" * 80)
-    print("  M4: SPEAKER DIARIZATION — Sarvam Saaras v4 Batch API")
+    print(f"  M4: SPEAKER DIARIZATION — {provider.upper()}")
     print("=" * 80)
-    print(f"  Provider:        Sarvam Saaras v4")
+    print(f"  Provider:        {provider.upper()}")
     print(f"  Mode:            {mode}")
     print(f"  Num Speakers:    {num_speakers}")
     print(f"  Diarization:     ENABLED")
@@ -135,21 +148,24 @@ def main() -> int:
     args = parse_args()
     settings = get_settings()
 
+    provider = args.provider.lower()
     mode = args.mode.lower()
     num_speakers = args.num_speakers
     reuse_existing = not args.no_reuse
 
-    print_banner(mode, num_speakers)
+    print_banner(mode, num_speakers, provider=provider)
 
     # Step 1: Determine input/output directories
     input_dir = (
         Path(args.input_dir).resolve() if args.input_dir
         else settings.processed_audio_dir
     )
-    output_dir = (
-        Path(args.output_dir).resolve() if args.output_dir
-        else settings.diarized_transcripts_dir
-    )
+    if args.output_dir:
+        output_dir = Path(args.output_dir).resolve()
+    elif provider == "pyannote":
+        output_dir = settings.onprem_pyannote_diarized_dir
+    else:
+        output_dir = settings.diarized_transcripts_dir
 
     print(f"\n[1/3] Discovering preprocessed audio files in: {input_dir}")
     if not input_dir.exists():
@@ -166,14 +182,43 @@ def main() -> int:
     print(f"  Found {len(wav_files)} recording(s) to diarize.")
 
     # Step 2: Initialize Processor
-    print(f"\n[2/3] Initializing DiarizationProcessor (mode={mode}, num_speakers={num_speakers})...")
+    print(f"\n[2/3] Initializing DiarizationProcessor (provider='{provider}', mode={mode}, num_speakers={num_speakers})...")
     processor = DiarizationProcessor(
         settings=settings,
+        provider=provider,
         mode=mode,
         num_speakers=num_speakers,
     )
 
-    # Step 3: Run Batch Diarization
+    # Step 3: Run Diarization
+    if args.recording:
+        target_stem = Path(args.recording).stem
+        target_wav = input_dir / f"{target_stem}.wav"
+        if not target_wav.is_file():
+            candidates = list(input_dir.glob(f"{target_stem}.*"))
+            if candidates:
+                target_wav = candidates[0]
+            else:
+                print(f"[ERROR] Specified recording '{args.recording}' not found in {input_dir}.", file=sys.stderr)
+                return 1
+
+        print(f"\n[3/3] Running speaker diarization for single recording: {target_wav.name}...")
+        try:
+            diarized = processor.process_recording(
+                target_wav,
+                output_dir=output_dir,
+                reuse_existing=reuse_existing,
+            )
+            print(f"\n[SUCCESS] Diarization completed for {diarized.recording_id}")
+            print(f"  Speakers detected: {diarized.num_speakers_detected}")
+            print(f"  Segments count:    {len(diarized.segments)}")
+            print(f"  Processing time:   {diarized.processing_time_seconds:.2f}s")
+            print(f"  Output saved to:   {output_dir / f'{diarized.recording_id}.json'}")
+            return 0
+        except Exception as exc:
+            print(f"[ERROR] Diarization failed for {args.recording}: {exc}", file=sys.stderr)
+            return 1
+
     print(f"\n[3/3] Diarizing {len(wav_files)} recording(s)... (reuse_existing={reuse_existing})")
     summary = processor.process_batch(
         input_dir=input_dir,

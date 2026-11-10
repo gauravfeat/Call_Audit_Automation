@@ -402,6 +402,11 @@ class RoleClassifier:
             ]
             if matching:
                 json_file = matching[0]
+            elif (
+                hasattr(self.settings, "onprem_pyannote_diarized_dir")
+                and (self.settings.onprem_pyannote_diarized_dir / f"{recording_id}.json").is_file()
+            ):
+                json_file = self.settings.onprem_pyannote_diarized_dir / f"{recording_id}.json"
             else:
                 logger.error("Original diarized file for '%s' not found in %s", recording_id, in_dir)
                 return None

@@ -68,8 +68,14 @@ def parse_args() -> argparse.Namespace:
         "--provider",
         type=str,
         default="sarvam",
-        choices=["sarvam", "whisper"],
-        help="Speech-to-Text engine to use. Default is 'sarvam' (Saaras v4 Codemix).",
+        choices=["sarvam", "whisper", "whisper_api"],
+        help="Speech-to-Text engine to use: 'sarvam', 'whisper', or 'whisper_api' (remote Whisper Large-v3).",
+    )
+    parser.add_argument(
+        "--recording",
+        type=str,
+        default=None,
+        help="Specific recording ID to transcribe (e.g. 'MOCK_CALL_002'). If omitted, processes all recordings.",
     )
     parser.add_argument(
         "--mode",
@@ -184,6 +190,8 @@ def main() -> int:
         output_dir = Path(args.output_dir).resolve()
     elif provider == "sarvam":
         output_dir = settings.primary_transcripts_dir
+    elif provider in ("whisper_api", "remote_whisper"):
+        output_dir = settings.onprem_whisper_transcripts_dir
     else:
         output_dir = settings.transcripts_dir
 
@@ -196,6 +204,13 @@ def main() -> int:
         return 1
 
     wav_files = sorted(list(input_dir.glob("*.wav")))
+    if args.recording:
+        target_stem = Path(args.recording).stem
+        wav_files = [w for w in wav_files if w.stem == target_stem]
+        if not wav_files:
+            print(f"[ERROR] Specified recording '{args.recording}' not found in {input_dir}.", file=sys.stderr)
+            return 1
+
     if not wav_files:
         print(f"[ERROR] No .wav files found in {input_dir}.", file=sys.stderr)
         print("Please run 'python scripts/process_audio.py' first to preprocess mock recordings.")
@@ -216,6 +231,8 @@ def main() -> int:
             compute_type=settings.WHISPER_COMPUTE_TYPE,
         )
         transcriber = AudioTranscriber(provider="whisper", model=whisper_model, settings=settings)
+    elif provider in ("whisper_api", "remote_whisper"):
+        transcriber = AudioTranscriber(provider="whisper_api", settings=settings)
     else:
         transcriber = AudioTranscriber(provider="sarvam", mode=mode, settings=settings)
 

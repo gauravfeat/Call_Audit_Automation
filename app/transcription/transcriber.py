@@ -141,8 +141,33 @@ class AudioTranscriber:
 
         if self.provider == "sarvam":
             return self._transcribe_sarvam(path, rec_id, reuse_existing=reuse_existing)
+        elif self.provider in ("whisper_api", "remote_whisper"):
+            return self._transcribe_whisper_api(path, rec_id, reuse_existing=reuse_existing)
         else:
             return self._transcribe_whisper(path, rec_id)
+
+    def _transcribe_whisper_api(
+        self,
+        path: Path,
+        rec_id: str,
+        reuse_existing: bool = True,
+    ) -> Transcript:
+        """Transcribe using Remote Whisper Large-v3 API."""
+        from app.transcription.whisper_api_client import WhisperAPIClient, WhisperAPIError
+        logger.info(
+            "Starting Remote Whisper Large-v3 API transcription for '%s' (ID: %s)...",
+            path.name, rec_id,
+        )
+        try:
+            client = WhisperAPIClient(settings=self.settings)
+            return client.transcribe_file(
+                audio_path=path,
+                recording_id=rec_id,
+                reuse_existing=reuse_existing,
+                save_output=True,
+            )
+        except WhisperAPIError as exc:
+            raise TranscriptionError(f"Whisper API transcription failed for {rec_id}: {exc}") from exc
 
     def _transcribe_sarvam(
         self,
